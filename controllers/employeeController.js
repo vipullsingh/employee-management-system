@@ -12,39 +12,99 @@ exports.createEmployee = async (req, res) => {
   }
 };
 
-// Get all employees
+// // Get all employees
+// exports.getAllEmployees = async (req, res) => {
+//   try {
+//     const { page, limit } = req.query;
+//     const startIndex = (page - 1) * limit;
+//     const endIndex = page * limit;
+
+//     const results = {};
+
+//     const totalEmployees = await Employee.countDocuments().exec();
+
+//     if (endIndex < totalEmployees) {
+//       results.next = {
+//         page: parseInt(page, 10) + 1,
+//         limit: parseInt(limit, 10)
+//       };
+//     }
+
+//     if (startIndex > 0) {
+//       results.previous = {
+//         page: parseInt(page, 10) - 1,
+//         limit: parseInt(limit, 10)
+//       };
+//     }
+
+//     results.results = await Employee.find().skip(startIndex).limit(limit).exec();
+
+//     res.status(200).json(results);
+//   } catch (error) {
+//     console.error('Error getting employees:', error);
+//     res.status(500).json({ error: 'Server error' });
+//   }
+// };
 exports.getAllEmployees = async (req, res) => {
-  try {
-    const { page, limit } = req.query;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-
-    const results = {};
-
-    const totalEmployees = await Employee.countDocuments().exec();
-
-    if (endIndex < totalEmployees) {
-      results.next = {
-        page: parseInt(page, 10) + 1,
-        limit: parseInt(limit, 10)
-      };
+    try {
+      const { page, limit, sortBy, sortOrder, department, search } = req.query;
+      const startIndex = (page - 1) * limit;
+      const endIndex = page * limit;
+  
+      const results = {};
+  
+      let query = Employee.find();
+  
+      // Sorting
+      if (sortBy) {
+        const sortField = sortBy === 'salary' ? 'salary' : 'createdAt';
+        const sortOrderValue = sortOrder === 'desc' ? -1 : 1;
+        query = query.sort({ [sortField]: sortOrderValue });
+      }
+  
+      // Filtering
+      if (department) {
+        query = query.where('department', department);
+      }
+  
+      // Searching
+      if (search) {
+        query = query.where('firstName', new RegExp(search, 'i'));
+      }
+  
+      const totalEmployees = await Employee.countDocuments(query).exec();
+  
+      if (endIndex < totalEmployees) {
+        results.next = {
+          page: parseInt(page, 10) + 1,
+          limit: parseInt(limit, 10),
+          sortBy,
+          sortOrder,
+          department,
+          search
+        };
+      }
+  
+      if (startIndex > 0) {
+        results.previous = {
+          page: parseInt(page, 10) - 1,
+          limit: parseInt(limit, 10),
+          sortBy,
+          sortOrder,
+          department,
+          search
+        };
+      }
+  
+      results.results = await query.skip(startIndex).limit(limit).exec();
+  
+      res.status(200).json(results);
+    } catch (error) {
+      console.error('Error getting employees:', error);
+      res.status(500).json({ error: 'Server error' });
     }
-
-    if (startIndex > 0) {
-      results.previous = {
-        page: parseInt(page, 10) - 1,
-        limit: parseInt(limit, 10)
-      };
-    }
-
-    results.results = await Employee.find().skip(startIndex).limit(limit).exec();
-
-    res.status(200).json(results);
-  } catch (error) {
-    console.error('Error getting employees:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
+  };
+  
 
 // Get an employee by ID
 exports.getEmployeeById = async (req, res) => {
